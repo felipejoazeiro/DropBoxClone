@@ -36,6 +36,8 @@ class DropBoxController {
             this.uploadTask(event.target.files).then(responses=>{
                 responses.forEach(resp => {
                     console.log(resp.files['input-file'])
+                
+                    this.getFirebaseRef().push().set(resp.files['input-file'])
                 })
                 this.modalShow(false)
             })
@@ -46,8 +48,8 @@ class DropBoxController {
         })
     }
 
-    getFireBaseRef(){
-        
+    getFirebaseRef(){
+        return firebase.database().ref('files')
     }
 
     modalShow(show = true){
@@ -64,7 +66,7 @@ class DropBoxController {
 
                 ajax.onload = event =>{
                     try{
-                        resolve(JSON.parse(ajax))
+                        resolve(JSON.parse(ajax.responseText))
                     }catch(e){
                         reject(e)
                     }
