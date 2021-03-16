@@ -120,11 +120,14 @@ class DropBoxController {
         this.inputFilesEl.addEventListener('change', event=>{
             this.btnSendFileEl.disabled = true;
             this.uploadTask(event.target.files).then(responses=>{
-                responses.forEach(resp => {
-                    console.log(resp.files['input-file'])
-                
-                    this.getFirebaseRef().push().set(resp.files['input-file'])
-                })
+                responses.forEach(resp=>{
+                    this.getFirebaseRef().push().set({
+                        name: resp.name,
+                        type: resp.contentType,
+                        path: resp.downloadURLs[0],
+                        size: resp.size
+                    });
+                });
                 this.uploadComplete()
             }).catch(err=>{
                 this.uploadComplete()
@@ -174,12 +177,26 @@ class DropBoxController {
     uploadTask(files){
         let promises = [];
         [...files].forEach(file=>{
-            let formData = new FormData()
-            formData.append('input-file', file)
-            promises.push(this.ajax('/upload', 'POST', formData, ()=>{
-                this.uploadProgress(event,file)
-            }, ()=>{
-                this.startUploadTime = Date.now()
+            
+            promises.push(new Promise((resolve,reject)=>{
+                let fileRef = firebase.storage().ref(this.currentFolder.join('/')).child(file.name)
+                let task = fileRef.put(file)
+                task.on('state_changed', snapshot=>{
+                    this.uploadProgress({
+                        loaded: snapshot.bytesTransferred,
+                        total: snapshot.totalBytes
+                    },file)
+                    console.log('progress', snapshot)
+                }, error=>{
+                    console.error(error)
+                    reject(error)
+                }, ()=>{
+                    fileRef.getMetadata().then(metadata=>{
+                        resolve(metadata)
+                    }).catch(err=>{
+                        reject(err)
+                    })
+                })
             }))
         })
 
